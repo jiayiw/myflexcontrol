@@ -1,7 +1,7 @@
 import numpy as np
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
-from PyQt6.QtCore import Qt, pyqtSignal, MouseEvent
 import pyqtgraph as pg
+from PyQt6.QtCore import MouseEvent, Qt, pyqtSignal
+from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 
 class PanadapterWidget(pg.PlotWidget):
@@ -15,9 +15,7 @@ class PanadapterWidget(pg.PlotWidget):
         self.setLabel("bottom", "Frequency", units="Hz")
 
         self.curve = self.plot(pen=pg.mkPen("g", width=2))
-        self.center_freq_line = self.addLine(
-            color="y", width=1, style=Qt.PenStyle.DashLine
-        )
+        self.center_freq_line = self.addLine(color="y", width=1, style=Qt.PenStyle.DashLine)
         self.cursor_line = self.addLine(color="r", width=2, movable=True)
 
         self.freq_bins = None

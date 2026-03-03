@@ -1,31 +1,32 @@
-import sys
 import asyncio
 import logging
+import sys
+
+from PyQt6.QtCore import QSettings, Qt, QTimer, pyqtSignal
+from PyQt6.QtGui import QKeySequence
 from PyQt6.QtWidgets import (
     QApplication,
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
-    QSlider,
-    QShortcut,
+    QMainWindow,
     QMessageBox,
+    QPushButton,
+    QShortcut,
+    QSlider,
     QStatusBar,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QSettings
-from PyQt6.QtGui import QKeySequence
 
-from config_manager import ConfigManager
-from flexradio_client import FlexRadioClient
-from flexradio_api import FlexRadioAPI, SliceState
-from panadapter_display import PanadapterWidget
-from waterfall_display import WaterfallWidget
 from audio_manager import AudioManager
+from config_manager import ConfigManager
+from flexradio_api import FlexRadioAPI, SliceState
+from flexradio_client import FlexRadioClient
 from memory_manager import MemoryManager
+from panadapter_display import PanadapterWidget
 from settings_dialog import SettingsDialog
+from waterfall_display import WaterfallWidget
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

@@ -1,8 +1,9 @@
-import sys
 import asyncio
 import logging
-from PyQt6.QtWidgets import QApplication
+import sys
+
 from PyQt6.QtCore import QTimer
+from PyQt6.QtWidgets import QApplication
 
 from flexradio_gui import FlexRadioGUI
 

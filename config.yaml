@@ -19,6 +19,8 @@ audio:
   tx_gain: 1.0
   input_device: null
   backend: "pipewire"
+  streaming: true
+  enable_analog_tx: true
 
 memory:
   max_channels: 10

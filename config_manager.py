@@ -1,6 +1,13 @@
-import yaml
+import logging
 from pathlib import Path
 from typing import Any
+
+import yaml
+
+logger = logging.getLogger(__name__)
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ConfigManager:
@@ -62,7 +69,7 @@ class ConfigManager:
                 loaded = yaml.safe_load(f)
                 self._deep_merge(loaded, self.config)
         except Exception as e:
-            print(f"Error loading config: {e}")
+            logger.error(f"Error loading config: {e}")
         return self.config
 
     def save_config(self, config=None):
@@ -72,7 +79,7 @@ class ConfigManager:
             with open(self.config_file, "w") as f:
                 yaml.dump(config, f, default_flow_style=False)
         except Exception as e:
-            print(f"Error saving config: {e}")
+            logger.error(f"Error saving config: {e}")
 
     def get_radio_ip(self) -> str:
         return self.config["radio"]["ip_address"]

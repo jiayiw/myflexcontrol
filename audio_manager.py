@@ -1,6 +1,7 @@
-import pyaudio
-from typing import Callable, Optional, List, Dict, Any
 import logging
+from typing import Any, Callable, Dict, List, Optional
+
+import pyaudio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -15,27 +16,33 @@ class AudioManager:
         self.rx_stream = None
         self.tx_stream = None
         self.selected_input_device: Optional[int] = None
-        self.rx_callback: Optional[Callable[[bytes], None]] = None
-        self.tx_callback: Optional[Callable[[], bytes]] = None
+        self.rx_callback: Optional[Callable[[], bytes]] = None
+        self.tx_callback: Optional[Callable[[bytes], None]] = None
 
     def get_input_devices(self) -> List[Dict[str, Any]]:
         devices = []
         for i in range(self.pyaudio.get_device_count()):
             info = self.pyaudio.get_device_info_by_index(i)
-            if info["maxInputChannels"] > 0:
-                devices.append(
-                    {"index": i, "name": info["name"], "host_api": info["hostApi"]}
-                )
+            if int(info.get("maxInputChannels", 0)) > 0:
+                devices.append({"index": i, "name": info["name"], "host_api": info["hostApi"]})
         return devices
 
     def set_input_device(self, device_index: Optional[int]):
         self.selected_input_device = device_index
         logger.info(f"Input device set to: {device_index}")
 
-    def set_rx_callback(self, callback: Optional[Callable[[bytes], None]]):
+    def set_rx_callback(self, callback: Optional[Callable[[], bytes]]):
+        """
+        Set RX audio data source callback.
+        The callback should return audio bytes to be played.
+        """
         self.rx_callback = callback
 
-    def set_tx_callback(self, callback: Optional[Callable[[], bytes]]):
+    def set_tx_callback(self, callback: Optional[Callable[[bytes], None]]):
+        """
+        Set TX audio data handler callback.
+        The callback receives captured microphone audio data.
+        """
         self.tx_callback = callback
 
     def start_rx(self):
@@ -56,15 +63,17 @@ class AudioManager:
             logger.error(f"Failed to start RX audio: {e}")
 
     def _rx_stream_callback(self, in_data, frame: int, time_info, status: int):
+        """
+        RX audio stream callback.
+        Called by PyAudio when the output stream (speaker) needs audio data to play.
+        Returns audio bytes to be played.
+        """
         try:
-            if self.tx_callback:
-                return (self.tx_callback(), pyaudio.paContinue)
+            if self.rx_callback:
+                return (self.rx_callback(), pyaudio.paContinue)
         except Exception as e:
             logger.error(f"RX stream callback error: {e}")
         return (b"\x00" * frame * 2, pyaudio.paContinue)
-
-    def write_rx_data(self, data: bytes):
-        pass
 
     def stop_rx(self):
         if self.rx_stream:
@@ -78,9 +87,7 @@ class AudioManager:
             return
 
         device_index = (
-            self.selected_input_device
-            if self.selected_input_device is not None
-            else None
+            self.selected_input_device if self.selected_input_device is not None else None
         )
 
         try:
@@ -98,9 +105,14 @@ class AudioManager:
             logger.error(f"Failed to start TX audio: {e}")
 
     def _tx_stream_callback(self, in_data, frame: int, time_info, status: int):
+        """
+        TX audio stream callback.
+        Called by PyAudio when the input stream (microphone) captures audio data.
+        Processes captured audio data for transmission.
+        """
         try:
-            if self.rx_callback:
-                self.rx_callback(in_data)
+            if self.tx_callback:
+                self.tx_callback(in_data)
         except Exception as e:
             logger.error(f"TX stream callback error: {e}")
         return (None, pyaudio.paContinue)

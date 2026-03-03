@@ -1,6 +1,6 @@
 import asyncio
-from typing import Callable, Optional, Dict, Any
 import logging
+from typing import Any, Callable, Dict, Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,9 +20,7 @@ class FlexRadioClient:
 
     async def connect(self) -> bool:
         try:
-            self.reader, self.writer = await asyncio.open_connection(
-                self.host, self.port
-            )
+            self.reader, self.writer = await asyncio.open_connection(self.host, self.port)
             self.running = True
             asyncio.create_task(self._receive_responses())
             logger.info(f"Connected to {self.host}:{self.port}")
@@ -37,13 +35,16 @@ class FlexRadioClient:
             self.writer.close()
             try:
                 await self.writer.wait_closed()
-            except:
-                pass
+            except Exception as e:
+                logger.warning(f"Error closing writer: {e}")
         self.reader = None
         self.writer = None
         logger.info("Disconnected")
 
     async def send_command(self, command: str) -> str:
+        if self.writer is None:
+            raise RuntimeError("Not connected to radio. Call connect() first.")
+
         self.sequence = (self.sequence + 1) % 1000
         seq = self.sequence
 

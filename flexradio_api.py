@@ -1,7 +1,7 @@
 import asyncio
-from dataclasses import dataclass
-from typing import Optional, List, Callable
 import logging
+from dataclasses import dataclass
+from typing import Callable, List, Optional
 
 from flexradio_client import FlexRadioClient
 
@@ -70,6 +70,9 @@ class FlexRadioAPI:
     async def set_frequency(self, hz: int):
         if not self.slice_id:
             return
+        if not self._validate_frequency(hz):
+            logger.error(f"Invalid frequency: {hz} Hz. Must be between 1.8 MHz and 30 MHz")
+            return
         try:
             await self.client.send_command(f"slice set {self.slice_id} frequency={hz}")
             self.slice_state.frequency = hz
@@ -81,6 +84,9 @@ class FlexRadioAPI:
 
     async def set_mode(self, mode: str):
         if not self.slice_id:
+            return
+        if not self._validate_mode(mode):
+            logger.error(f"Invalid mode: {mode}. Must be one of: USB, LSB, CW, AM, FM")
             return
         try:
             await self.client.send_command(f"slice set {self.slice_id} mode={mode}")
@@ -94,6 +100,9 @@ class FlexRadioAPI:
     async def set_rf_gain(self, level: int):
         if not self.slice_id:
             return
+        if not self._validate_gain(level):
+            logger.error(f"Invalid RF gain: {level}. Must be between 0 and 100")
+            return
         try:
             await self.client.send_command(f"slice set {self.slice_id} rfpower={level}")
             self.slice_state.rf_gain = level
@@ -105,6 +114,9 @@ class FlexRadioAPI:
 
     async def set_af_gain(self, level: int):
         if not self.slice_id:
+            return
+        if not self._validate_gain(level):
+            logger.error(f"Invalid AF gain: {level}. Must be between 0 and 100")
             return
         try:
             await self.client.send_command(f"slice set {self.slice_id} af_gain={level}")
@@ -130,15 +142,11 @@ class FlexRadioAPI:
     async def get_ptt(self) -> bool:
         return self.slice_state.ptt
 
-    async def enable_panadapter(
-        self, width: int = 1024, center_freq: Optional[int] = None
-    ):
+    async def enable_panadapter(self, width: int = 1024, center_freq: Optional[int] = None):
         try:
             if center_freq is None:
                 center_freq = self.slice_state.frequency
-            result = await self.client.send_command(
-                f"display pan create {width} {center_freq}"
-            )
+            result = await self.client.send_command(f"display pan create {width} {center_freq}")
             if result:
                 parts = result.split()
                 self.pan_id = parts[-1]
@@ -159,18 +167,14 @@ class FlexRadioAPI:
 
     async def enable_rx_audio(self, sample_rate: int = 48000):
         try:
-            result = await self.client.send_command(
-                f"audio client create rx {sample_rate}"
-            )
+            result = await self.client.send_command(f"audio client create rx {sample_rate}")
             logger.info(f"RX audio enabled: {result}")
         except Exception as e:
             logger.error(f"Failed to enable RX audio: {e}")
 
     async def enable_tx_audio(self, sample_rate: int = 48000):
         try:
-            result = await self.client.send_command(
-                f"audio client create tx {sample_rate}"
-            )
+            result = await self.client.send_command(f"audio client create tx {sample_rate}")
             logger.info(f"TX audio enabled: {result}")
         except Exception as e:
             logger.error(f"Failed to enable TX audio: {e}")
@@ -205,20 +209,20 @@ class FlexRadioAPI:
             if "frequency=" in param:
                 try:
                     self.slice_state.frequency = int(param.split("=")[1])
-                except:
-                    pass
+                except (ValueError, IndexError) as e:
+                    logger.warning(f"Invalid frequency parameter: {param}")
             elif "mode=" in param:
                 self.slice_state.mode = param.split("=")[1]
             elif "rfpower=" in param:
                 try:
                     self.slice_state.rf_gain = int(param.split("=")[1])
-                except:
-                    pass
+                except (ValueError, IndexError) as e:
+                    logger.warning(f"Invalid RF power parameter: {param}")
             elif "af_gain=" in param:
                 try:
                     self.slice_state.af_gain = int(param.split("=")[1])
-                except:
-                    pass
+                except (ValueError, IndexError) as e:
+                    logger.warning(f"Invalid AF gain parameter: {param}")
 
     def _notify_state_change(self):
         for callback in self.state_callbacks:
@@ -230,3 +234,15 @@ class FlexRadioAPI:
     def remove_state_callback(self, callback: Callable):
         if callback in self.state_callbacks:
             self.state_callbacks.remove(callback)
+
+    def _validate_frequency(self, hz: int) -> bool:
+        """Validate frequency range (1.8 MHz - 30 MHz)"""
+        return 1800000 <= hz <= 30000000
+
+    def _validate_gain(self, level: int) -> bool:
+        """Validate gain range (0-100)"""
+        return 0 <= level <= 100
+
+    def _validate_mode(self, mode: str) -> bool:
+        """Validate mode"""
+        return mode.lower() in ["usb", "lsb", "cw", "am", "fm"]

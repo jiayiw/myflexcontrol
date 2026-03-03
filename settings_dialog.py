@@ -1,14 +1,20 @@
+import logging
+import re
+
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import (
+    QComboBox,
     QDialog,
-    QVBoxLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QSpinBox,
-    QComboBox,
+    QMessageBox,
     QPushButton,
+    QSpinBox,
+    QVBoxLayout,
 )
-from PyQt6.QtCore import pyqtSignal, QObject
+
+logger = logging.getLogger(__name__)
 
 
 class SettingsDialog(QDialog):
@@ -35,9 +41,7 @@ class SettingsDialog(QDialog):
         width_layout.addWidget(QLabel("Panadapter Width:"))
         self.width_input = QSpinBox()
         self.width_input.setRange(512, 4096)
-        self.width_input.setValue(
-            self.config_manager.get("display.panadapter_width", 1024)
-        )
+        self.width_input.setValue(self.config_manager.get("display.panadapter_width", 1024))
         width_layout.addWidget(self.width_input)
         layout.addLayout(width_layout)
 
@@ -56,14 +60,13 @@ class SettingsDialog(QDialog):
             if index >= 0:
                 self.mic_combo.setCurrentIndex(index)
         except Exception as e:
+            logger.warning(f"Failed to get input devices: {e}")
             self.mic_combo.addItem("Default (System)", None)
 
         mic_layout.addWidget(self.mic_combo)
         layout.addLayout(mic_layout)
 
-        backend_info_label = QLabel(
-            f"Audio Backend: {self.audio_manager.get_audio_backend()}"
-        )
+        backend_info_label = QLabel(f"Audio Backend: {self.audio_manager.get_audio_backend()}")
         layout.addWidget(backend_info_label)
 
         layout.addStretch()
@@ -79,9 +82,31 @@ class SettingsDialog(QDialog):
 
         self.setLayout(layout)
 
+    def _validate_ip_address(self, ip: str) -> bool:
+        """Validate IP address format"""
+        pattern = r"^(\d{1,3}\.){3}\d{1,3}$"
+        if not re.match(pattern, ip.strip()):
+            return False
+        parts = ip.strip().split(".")
+        try:
+            return all(0 <= int(part) <= 255 for part in parts)
+        except ValueError:
+            return False
+
     def accept(self):
+        """Accept settings with validation"""
+        ip = self.ip_input.text().strip()
+
+        if not self._validate_ip_address(ip):
+            QMessageBox.warning(
+                self,
+                "Invalid IP Address",
+                "Please enter a valid IP address (e.g., 192.168.1.100)",
+            )
+            return
+
         settings = {}
-        settings["radio.ip_address"] = self.ip_input.text()
+        settings["radio.ip_address"] = ip
         settings["display.panadapter_width"] = self.width_input.value()
 
         mic_index = self.mic_combo.currentData()

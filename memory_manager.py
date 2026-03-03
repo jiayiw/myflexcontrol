@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -9,6 +9,19 @@ class MemoryChannel:
     mode: str
     rf_gain: int = 50
     af_gain: int = 50
+
+    def __post_init__(self):
+        """Validate channel parameters after initialization"""
+        if not (1800000 <= self.frequency <= 30000000):
+            raise ValueError(
+                f"Invalid frequency: {self.frequency} Hz. " f"Must be between 1.8 MHz and 30 MHz"
+            )
+        if self.mode.lower() not in ["usb", "lsb", "cw", "am", "fm"]:
+            raise ValueError(f"Invalid mode: {self.mode}. Must be one of: USB, LSB, CW, AM, FM")
+        if not (0 <= self.rf_gain <= 100):
+            raise ValueError(f"Invalid RF gain: {self.rf_gain}. Must be between 0 and 100")
+        if not (0 <= self.af_gain <= 100):
+            raise ValueError(f"Invalid AF gain: {self.af_gain}. Must be between 0 and 100")
 
 
 class MemoryManager:
@@ -46,9 +59,7 @@ class MemoryManager:
                     "af_gain": ch.af_gain,
                 }
             )
-        return {
-            "memory": {"max_channels": self.max_channels, "channels": channels_list}
-        }
+        return {"memory": {"max_channels": self.max_channels, "channels": channels_list}}
 
     def add_channel(self, channel: MemoryChannel) -> bool:
         if len(self.channels) >= self.max_channels:
