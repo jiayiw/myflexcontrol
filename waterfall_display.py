@@ -8,8 +8,12 @@ class WaterfallWidget(pg.GraphicsLayoutWidget):
         self.history_lines = history_lines
         self.buffer = np.zeros((history_lines, 1024))
 
+        # Use ViewBox directly instead of addItem
+        self.view_box = pg.ViewBox()
+        self.addItem(self.view_box, row=0, col=0)
+
         self.img = pg.ImageItem()
-        self.addItem(self.img)
+        self.view_box.addItem(self.img)
 
         colormap = pg.colormap.get("inferno")
         self.img.setLookupTable(colormap)
