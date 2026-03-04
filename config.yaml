@@ -33,3 +33,12 @@ memory:
       frequency: 14250000
       mode: "lsb"
       rf_gain: 50
+
+# AI Audio Denoiser
+default_audio: "pipewire"
+ai_denoiser:
+  enabled: false
+  auto_download: false
+  model_cache_dir: "~/.cache/flexradio/ai_models"
+  fallback_mode: "deepfilter"
+  manual_fallback: false

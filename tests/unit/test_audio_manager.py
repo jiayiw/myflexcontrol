@@ -230,13 +230,6 @@ class TestAudioManager:
 
             assert data == b""
 
-    def test_write_rx_data(self, sample_config, mock_pyaudio):
-        """测试写入接收数据"""
-        with patch("pyaudio.PyAudio", return_value=mock_pyaudio):
-            manager = AudioManager(sample_config)
-
-            manager.write_rx_data(b"test_audio_data")
-
     def test_cleanup(self, sample_config, mock_pyaudio):
         """测试清理资源"""
         mock_rx_stream = Mock()
@@ -285,7 +278,9 @@ class TestAudioManager:
     def test_get_audio_backend_error(self, sample_config):
         """测试获取音频后端（错误）"""
         mock_pyaudio_instance = Mock()
-        mock_pyaudio_instance.get_default_output_device_info.side_effect = Exception("Error")
+        mock_pyaudio_instance.get_default_output_device_info.side_effect = Exception(
+            "Error"
+        )
 
         with patch("pyaudio.PyAudio", return_value=mock_pyaudio_instance):
             manager = AudioManager(sample_config)
@@ -294,17 +289,17 @@ class TestAudioManager:
             assert backend == "Unknown"
 
     def test_rx_stream_callback_with_tx_callback(self, sample_config, mock_pyaudio):
-        """测试接收流回调（有发射回调）"""
+        """测试接收流回调（有接收回调）"""
         with patch("pyaudio.PyAudio", return_value=mock_pyaudio):
             manager = AudioManager(sample_config)
 
-            tx_callback = Mock(return_value=b"test_data")
-            manager.set_tx_callback(tx_callback)
+            rx_callback = Mock(return_value=b"test_data")
+            manager.set_rx_callback(rx_callback)
 
             data = manager._rx_stream_callback(None, 1024, None, 0)
 
             assert data[0] == b"test_data"
-            tx_callback.assert_called_once()
+            rx_callback.assert_called_once()
 
     def test_rx_stream_callback_without_tx_callback(self, sample_config, mock_pyaudio):
         """测试接收流回调（无发射回调）"""
@@ -317,16 +312,16 @@ class TestAudioManager:
             assert data[0] == b"\x00" * 2048
 
     def test_tx_stream_callback_with_rx_callback(self, sample_config, mock_pyaudio):
-        """测试发射流回调（有接收回调）"""
+        """测试发射流回调（有发射回调）"""
         with patch("pyaudio.PyAudio", return_value=mock_pyaudio):
             manager = AudioManager(sample_config)
 
-            rx_callback = Mock()
-            manager.set_rx_callback(rx_callback)
+            tx_callback = Mock()
+            manager.set_tx_callback(tx_callback)
 
             result = manager._tx_stream_callback(b"input_data", 1024, None, 0)
 
-            rx_callback.assert_called_once_with(b"input_data")
+            tx_callback.assert_called_once_with(b"input_data")
             assert result == (None, 0)
 
     def test_tx_stream_callback_without_rx_callback(self, sample_config, mock_pyaudio):

@@ -1,0 +1,21 @@
+# AI Denoiser Dependencies
+# Install separately with: pip install -r requirements-ai.txt
+
+# SpeechBrain (GPU mode - requires CUDA GPU with >= 8GB VRAM)
+speechbrain >= 1.0.0
+torch >= 2.0.0
+torchaudio >= 2.0.0
+
+# GPU detection (optional)
+gputil >= 1.4.0
+
+# Model download from HuggingFace
+huggingface-hub >= 0.20.0
+
+# Audio processing support
+soundfile >= 0.12.0
+soundfile >= 0.12.0
+
+# Note: DeepFilterNet (CPU mode)
+# Install with: pip install deepfilter
+# Check PyPI for the latest version

@@ -49,11 +49,15 @@ class FlexRadioAPI:
             result = await self.client.send_command(f"slice create 0 {mode}")
             if result:
                 parts = result.split()
-                slice_id = parts[-1]
-                self.slice_id = slice_id
-                await self.client.send_command(f"sub slice {slice_id} all")
-                logger.info(f"Slice created: {slice_id}")
-                return slice_id
+                if parts:
+                    slice_id = parts[0]
+                    # Handle format like "R0|0|1" -> extract last part
+                    if "|" in slice_id:
+                        slice_id = slice_id.split("|")[-1]
+                    self.slice_id = slice_id
+                    await self.client.send_command(f"sub slice {slice_id} all")
+                    logger.info(f"Slice created: {slice_id}")
+                    return slice_id
         except Exception as e:
             logger.error(f"Failed to create slice: {e}")
         return None
@@ -71,7 +75,9 @@ class FlexRadioAPI:
         if not self.slice_id:
             return
         if not self._validate_frequency(hz):
-            logger.error(f"Invalid frequency: {hz} Hz. Must be between 1.8 MHz and 30 MHz")
+            logger.error(
+                f"Invalid frequency: {hz} Hz. Must be between 1.8 MHz and 30 MHz"
+            )
             return
         try:
             await self.client.send_command(f"slice set {self.slice_id} frequency={hz}")
@@ -142,16 +148,24 @@ class FlexRadioAPI:
     async def get_ptt(self) -> bool:
         return self.slice_state.ptt
 
-    async def enable_panadapter(self, width: int = 1024, center_freq: Optional[int] = None):
+    async def enable_panadapter(
+        self, width: int = 1024, center_freq: Optional[int] = None
+    ):
         try:
             if center_freq is None:
                 center_freq = self.slice_state.frequency
-            result = await self.client.send_command(f"display pan create {width} {center_freq}")
+            result = await self.client.send_command(
+                f"display pan create {width} {center_freq}"
+            )
             if result:
                 parts = result.split()
-                self.pan_id = parts[-1]
-                logger.info(f"Panadapter enabled: {self.pan_id}")
-                return result
+                if parts:
+                    pan_id = parts[0]
+                    if "|" in pan_id:
+                        pan_id = pan_id.split("|")[-1]
+                    self.pan_id = pan_id
+                    logger.info(f"Panadapter enabled: {self.pan_id}")
+                    return result
         except Exception as e:
             logger.error(f"Failed to enable panadapter: {e}")
         return None
@@ -167,14 +181,18 @@ class FlexRadioAPI:
 
     async def enable_rx_audio(self, sample_rate: int = 48000):
         try:
-            result = await self.client.send_command(f"audio client create rx {sample_rate}")
+            result = await self.client.send_command(
+                f"audio client create rx {sample_rate}"
+            )
             logger.info(f"RX audio enabled: {result}")
         except Exception as e:
             logger.error(f"Failed to enable RX audio: {e}")
 
     async def enable_tx_audio(self, sample_rate: int = 48000):
         try:
-            result = await self.client.send_command(f"audio client create tx {sample_rate}")
+            result = await self.client.send_command(
+                f"audio client create tx {sample_rate}"
+            )
             logger.info(f"TX audio enabled: {result}")
         except Exception as e:
             logger.error(f"Failed to enable TX audio: {e}")
@@ -191,16 +209,20 @@ class FlexRadioAPI:
             await self.client.send_command(f"sub slice {self.slice_id} all")
 
     def _handle_status(self, line: str):
-        parts = line[1:].split("|")
-        if len(parts) < 2:
+        parts = line.split("|")
+        if len(parts) < 3:
             return
 
-        msg_type = parts[0]
+        msg_prefix = parts[0]
+        if msg_prefix != "S":
+            return
 
-        if msg_type == "slice" and len(parts) > 2:
-            slice_id = parts[1]
+        msg_type = parts[1]
+
+        if msg_type == "slice" and len(parts) > 3:
+            slice_id = parts[2]
             if slice_id == self.slice_id:
-                params = parts[2:]
+                params = parts[3:]
                 self._update_slice_state(params)
                 self._notify_state_change()
 

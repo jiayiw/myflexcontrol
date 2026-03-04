@@ -19,12 +19,28 @@ class AudioManager:
         self.rx_callback: Optional[Callable[[], bytes]] = None
         self.tx_callback: Optional[Callable[[bytes], None]] = None
 
+        # Initialize AI denoiser if enabled
+        self.denoiser = None
+        if config.get("ai_denoiser", {}).get("enabled", False):
+            try:
+                from ai_denoiser.model_manager import get_denoiser
+
+                self.denoiser = get_denoiser(config["ai_denoiser"])
+                if self.denoiser and self.denoiser.is_ready():
+                    logger.info("AI Denoiser enabled and ready")
+                else:
+                    logger.warning("AI Denoiser requested but not available")
+            except Exception as e:
+                logger.error(f"Failed to initialize AI Denoiser: {e}")
+
     def get_input_devices(self) -> List[Dict[str, Any]]:
         devices = []
         for i in range(self.pyaudio.get_device_count()):
             info = self.pyaudio.get_device_info_by_index(i)
             if int(info.get("maxInputChannels", 0)) > 0:
-                devices.append({"index": i, "name": info["name"], "host_api": info["hostApi"]})
+                devices.append(
+                    {"index": i, "name": info["name"], "host_api": info["hostApi"]}
+                )
         return devices
 
     def set_input_device(self, device_index: Optional[int]):
@@ -70,7 +86,15 @@ class AudioManager:
         """
         try:
             if self.rx_callback:
-                return (self.rx_callback(), pyaudio.paContinue)
+                audio_data = self.rx_callback()
+
+                # Apply denoising if available
+                if self.denoiser and self.denoiser.is_ready():
+                    denoised = self.denoiser.process(audio_data)
+                    if denoised:
+                        audio_data = denoised
+
+                return (audio_data, pyaudio.paContinue)
         except Exception as e:
             logger.error(f"RX stream callback error: {e}")
         return (b"\x00" * frame * 2, pyaudio.paContinue)
@@ -87,7 +111,9 @@ class AudioManager:
             return
 
         device_index = (
-            self.selected_input_device if self.selected_input_device is not None else None
+            self.selected_input_device
+            if self.selected_input_device is not None
+            else None
         )
 
         try:
@@ -132,6 +158,13 @@ class AudioManager:
     def cleanup(self):
         self.stop_rx()
         self.stop_tx()
+
+        # Cleanup denoiser
+        if self.denoiser:
+            self.denoiser.cleanup()
+            self.denoiser = None
+            logger.info("AI Denoiser cleaned up")
+
         self.pyaudio.terminate()
 
     def get_audio_backend(self) -> str:

@@ -1,11 +1,9 @@
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
 import yaml
-
-logger = logging.getLogger(__name__)
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +58,13 @@ class ConfigManager:
                         "rf_gain": 50,
                     },
                 ],
+            },
+            "ai_denoiser": {
+                "enabled": False,
+                "auto_download": False,
+                "model_cache_dir": os.path.expanduser("~/.cache/flexradio/ai_models"),
+                "fallback_mode": "deepfilter",
+                "manual_fallback": False,
             },
         }
 

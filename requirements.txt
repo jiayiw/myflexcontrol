@@ -3,3 +3,7 @@ pyqtgraph>=0.13.0
 PyAudio>=0.2.14
 numpy>=1.24.0
 PyYAML>=6.0
+
+# AI Audio Denoiser (Optional)
+# Install separately: pip install -r requirements-ai.txt
+# Provides SpeechBrain (GPU) or DeepFilterNet (CPU) speech enhancement
